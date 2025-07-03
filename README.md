@@ -1,2 +1,2 @@
-# NOMIb
+# Nomi-Kin-API
 AI
