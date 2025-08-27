@@ -1,33 +1,48 @@
 from scapy.all import *
+from scapy.layers.inet import TCP
 import ipaddress
 
-ports = [25,80,53,443,445,8080,8443]
+ports = [25, 53, 80, 443, 445, 8080, 8443]
 
 def SynScan(host):
+    SYN = 0x02
+    ACK = 0x10
+    SYN_ACK = SYN | ACK  # 0x12
+
     ans,unans = sr(
         IP(dst=host)/
         TCP(sport=33333,dport=ports,flags="S")
         ,timeout=2,verbose=0)
     print("Open ports at %s:" % host)
     for (s,r,) in ans:
-        if s[TCP].dport == r[TCP].sport and r[TCP].flags=="SA":
+        # Check for SYN+ACK response using named constants for clarity
+        if s[TCP].dport == r[TCP].sport and r[TCP].flags & SYN_ACK == SYN_ACK:
             print(s[TCP].dport)
-
 def DNSScan(host):
-    ans,unans = sr(
-        IP(dst=host)/
-        UDP(dport=53)/
-        DNS(rd=1,qd=DNSQR(qname="google.com"))
-        ,timeout=2,verbose=0)
-    if ans and ans[UDP]:
+    for snd, rcv in ans:
+        if rcv.haslayer(UDP):
+            print("DNS Server at %s"%host),timeout=2,verbose=0)
+    for snd, rcv in ans:
+        if rcv.haslayer(UDP):
+            print("DNS Server at %s"%host)
         print("DNS Server at %s"%host)
+
+host = input("Enter target IP address: ")
     
-host = input("Enter IP Address: ")
 try:
     ipaddress.ip_address(host)
-except:
+except ValueError:
     print("Invalid address")
     exit(-1)
 
-SynScan(host)
-DNSScan(host)
+import threading
+
+# Run scans concurrently
+t1 = threading.Thread(target=SynScan, args=(host,))
+t2 = threading.Thread(target=DNSScan, args=(host,))
+
+t1.start()
+t2.start()
+
+t1.join()
+t2.join()
