@@ -2,6 +2,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import requests
 import time
 
@@ -32,6 +34,7 @@ chrome_options.add_argument("--window-size=1920,1080")
 chrome_service = Service(r"C:/Users/ckirb/ZAP/webdriver/windows/32/chromedriver.exe")
 driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
 
+cookies = {}  # cookies will be defined, even if try fails
 try:
     # 1️⃣ Go to login page
     login_url = "https://paradot.ai/login"
@@ -86,16 +89,23 @@ session.headers.update({
 # 6.a  Iterate over API list
 
 for item in API_BASE_URLS:
+    print("=" * 80)
+    print(f"Testing endpoint: {item}")
+    print("=" * 80)
+
     try:
         response = session.get(item)
         response.raise_for_status()
         HTTP_Status = response.status_code
         print(f"Success in requesting {item}: {HTTP_Status}") #prints HTTP status code
+        print(f"✅ Status: {HTTP_Status}")
+
         response_length = len(response.content)
         print(f"{item} has a response length of {response_length}")
-        content_type = response.headers.get('Content-Type')
+        # or print(f"🔎📦 Response length: {response_length}")
+        content_type = response.headers.get('Content-Type', '')
         # JSON keys preview
-        if "application/json" in content_type:
+        if "application/json" in content_type.lower():
             try:
                 json_preview = response.json()
                 print(f"JSON preview keys: {list(json_preview.keys())[:5]}")
@@ -110,7 +120,7 @@ for item in API_BASE_URLS:
         # Truncating logs of body for preview
         try:
             resp_text = response.text
-            body_preview = resp_text[:350] # left boundary defaults to 0,  so [:300] equivalent to slice [0:300]
+            body_preview = resp_text[:350].replace("\n", " ") # left boundary defaults to 0, so [:350] is equivalent to slice [0:350]
             print(f"Preview of response body: {body_preview}\n")
         except Exception as e:
             print(f"Whoops, error: {e}")
